@@ -27,8 +27,10 @@ long myData = 0;
 // Declare and initialise variable for radio status 
 int status = WL_IDLE_STATUS;
 
-// Initialize the Ethernet client object
-WiFiEspClient client;
+// Initialize the Wifi client object
+WiFiEspClient wifiClient;
+// Initialize the Wifi server object
+WiFiEspServer wifiServer(80);
 
 char server[] = "api.thingspeak.com";
 
@@ -41,6 +43,7 @@ void setup() {
 
   Serial.println("You're connected to the network");
   printWifiStatus();
+  initWifiServer();
   Serial.println("Startup completed");
 }
 
@@ -48,13 +51,76 @@ void loop() {
   
   logESPOutput();
   postToServerInterval();
-   
+  listenToWifiClients();
+}
+
+void listenToWifiClients() {
+  // listen for incoming clients. Give them simple response
+  WiFiEspClient client = server.available();
+  if(client) {
+    Serial.println("New Client connected to server");
+    //an http request ends with a blank line
+    boolean currentLineIsBlank = true;
+
+    while( client.connected() ) {
+      if( client.available() ) {
+        char c = client.read();
+        Serial.write(c);
+        // if you've gotten to the end of the line (received a newline
+        // character) and the line is blank, the http request has ended,
+        // so you can send a reply
+        if( c == '\n' && currentLineIsBlank ) {
+          Serial.println("Sending response");
+
+          //send a standard response http header
+          // use \r\n instaed of many println statemenets to speedup data send
+          client.print(
+            "Http/1.1 200 OK\r\n"
+            "Content-Type: text/html\r\n"
+            "Connection: close\r\n"
+            "Refresh: 20\r\n"
+            "\r\n"
+          );
+          client.print("<!DOCTYPE HTML>\r\n");
+          client.print("<html>\r\n");
+          client.print("<h1>Hello World!</h1>\r\n");
+          client.print("Requests received: ");
+          client.print(++reqCount);
+          client.print("<br>\r\n");
+          client.print("Analog input A0: ");
+          client.print(analogRead(0));
+          client.print("<br>\r\n");
+          client.print("</html>\r\n");
+          break;
+        }
+        if( c == '\n') {
+          // you are starting a new line
+          currentLineIsBlank = true;
+        }
+        else if( c != '\r') {
+          // you have gotten a character on the current line
+          currentLineIsBlank = false;
+        }
+      }
+    }
+    // give the web browser time to receive the data
+    delay(10);
+
+    //close the connection
+    client.stop();
+    Serial.println("Client disconnected");
+  }
+}
+
+void initWifiServer() {
+  // start the web server on port 80
+  wifiServer.begin();
 }
 
 void logESPOutput() {
 // Get connection info in Serial monitor
-  while(client.available()){
-    char c = client.read();
+  while(wifiClient.available()){
+    char c = wifiClient.read();
     Serial.write(c);
   }
 }
@@ -90,15 +156,19 @@ void postToServerInterval() {
 }
 
 void sendThingspeak(long value){
-  if (client.connectSSL(server, sslPort)) {
+  if (wifiClient.connectSSL(server, sslPort)) {
     Serial.println("Connected to server");
-    client.println("GET /update?api_key=" + String(thingspeakAPIKey) + 
+    wifiClient.println("GET /update?api_key=" + String(thingspeakAPIKey) + 
     "&field1=" + String(value) + " HTTP/1.1");
-    client.println("Host: api.thingspeak.com");
-    client.println("Connection: close");
-    client.println();
+    wifiClient.println("Host: api.thingspeak.com");
+    wifiClient.println("Connection: close");
+    wifiClient.println();
     Serial.println("Sent to server");
   }  
+}
+
+void uploadToThingSpeak(long value) {
+  GET("api.thingspeak.com", "/update?api_key=" + String(thingspeakAPIKey) + "&field1=" + String(value), null)
 }
 
 void printWifiStatus() {
@@ -117,4 +187,15 @@ void printWifiStatus() {
   Serial.print("Signal strength (RSSI):");
   Serial.print(rssi);
   Serial.println(" dBm");
+}
+
+void GET(char domain[], char relativeUrl[], headers ) {
+  if (wifiClient.connectSSL(domain, 443)) {
+    Serial.println("Connected to endpoint");
+    string connect = "GET " + String(relativeUrl) + " HTTP/1.1";
+    wifiClient.println(connect)
+    wifiClient.println("Host: "+ String(domain))
+    wifiClient.println("Connection: close");
+    Serial.println("Sent to server");
+  }
 }
