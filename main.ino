@@ -17,33 +17,38 @@ void setup()
   while (!wifiSerial) {
     ; // wait for serial port to connect. Needed for Leonardo only
   }
-  sendToWifi("AT+CWMODE=1",responseTime,DEBUG); // configure as access point
+ /* sendToWifi("AT+CWMODE=1",responseTime,DEBUG); // configure as access point
   sendToWifi('AT+CWJAP_CUR="Herman-3G","hermansinvilla', responseTime, DEBUG);
-
+*/
   /*
   sendToUno("Starting to send to WIFI",responseTime, DEBUG);
   digitalWrite(13,HIGH);
-  sendToWifi("AT+CWMODE=3", responseTime, DEBUG);
+  sendToWifi("AT+CWMODE=1", responseTime, DEBUG);
+  wifiSerial.println(command);
+  sendToWifi("AT+ CWJAP=Herman-3G,hermansinvilla",responseTime,DEBUG); // get ip address
+  sendToWifi("AT+CIPMUX=1",responseTime,DEBUG); // configure for multiple connections
+  sendToWifi("AT+CIPSERVER=1,80",responseTime,DEBUG); // turn on server on port 80
+  sendToUno("Wifi connection is running!",responseTime,DEBUG);
+  sendToUno("Connecting to my wifi!",responseTime,DEBUG);*/
+  //GET https://api.thingspeak.com/update?api_key=Z8XM3T4MTC2GUXOJ&field1=0
+  //sendToWifi('AT+CWJAP_CUR="abc","0123456789', responseTime, DEBUG);*/
+  //sendToWifi("AT+RST",responseTime,DEBUG); // configure as access point
+  //sendToWifi("AT+IPR=9600",responseTime,DEBUG); // configure as access point
+
+  sendToWifi("AT+CWMODE=2",responseTime,DEBUG); // configure as access point
   sendToWifi("AT+CIFSR",responseTime,DEBUG); // get ip address
   sendToWifi("AT+CIPMUX=1",responseTime,DEBUG); // configure for multiple connections
   sendToWifi("AT+CIPSERVER=1,80",responseTime,DEBUG); // turn on server on port 80
   sendToUno("Wifi connection is running!",responseTime,DEBUG);
-  sendToUno("Connecting to my wifi!",responseTime,DEBUG);
-  //GET https://api.thingspeak.com/update?api_key=Z8XM3T4MTC2GUXOJ&field1=0
-  sendToWifi('AT+CWJAP_CUR="abc","0123456789', responseTime, DEBUG);*/
-  
-  /*sendToWifi("AT+CWMODE=2",responseTime,DEBUG); // configure as access point
-  sendToWifi("AT+CIFSR",responseTime,DEBUG); // get ip address
-  sendToWifi("AT+CIPMUX=1",responseTime,DEBUG); // configure for multiple connections
-  sendToWifi("AT+CIPSERVER=1,80",responseTime,DEBUG); // turn on server on port 80
-  sendToUno("Wifi connection is running!",responseTime,DEBUG);*/
-  digitalWrite(13,LOW);
+  digitalWrite(13,HIGH);
 
 }
 
 
 void loop()
 {
+  //sendToWifi("AT",responseTime,DEBUG); // configure as access point
+
   if(Serial.available()>0){
      String message = readSerialMessage();
     if(find(message,"debugEsp8266:")){
@@ -168,6 +173,7 @@ String sendToWifi(String command, const int timeout, boolean debug){
   {
     while(wifiSerial.available())
     {
+     Serial.println(wifiSerial.available());
     // The esp has data so display its output to the serial window 
     char c = wifiSerial.read(); // read the next character.
     response+=c;
@@ -175,7 +181,8 @@ String sendToWifi(String command, const int timeout, boolean debug){
   }
   if(debug)
   {
-    Serial.println(response);
+    
+    Serial.println(response+"|");
   }
   return response;
 }
