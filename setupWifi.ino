@@ -106,6 +106,13 @@ void logTempSensorData() {
   }
 }
 
+float getTempSensorTemperatur() {
+  int sensorData = analogRead(tempPin);
+  float voltage = (sensorData/1024.0) * 5.0;
+  float temperature = (voltage - .5) * 100;
+  return temperature;
+}
+
 void setLedColor() {
   Serial.println("r: "+String(redVal)+ " g:"+String(greenVal)+" b:"+String(blueVal));
   analogWrite(redPin, redVal);
