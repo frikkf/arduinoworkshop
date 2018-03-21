@@ -79,7 +79,7 @@ void listenToWifiClients() {
         // so you can send a reply
         if( c == '\n' && currentLineIsBlank ) {
           Serial.println("Sending response");
-          sendHttpResponse(client);
+          sendHttpResponseHTML(client);
           break;
         }
         if( c == '\n') {
@@ -101,7 +101,7 @@ void listenToWifiClients() {
   }
 }
 
-void sendHttpResponse(WiFiEspClient client) {
+void sendHttpResponseHTML(WiFiEspClient client) {
   //todo how to configure this to respond with json?
   //send a standard response http header
   // use \r\n instaed of many println statemenets to speedup data send
@@ -148,6 +148,34 @@ void logESPOutput() {
   // Get connection info in Serial monitor
   while(wifiClient.available()){
     char c = wifiClient.read();
+    
+    // Check HTTP status
+    char status[32] = {0};
+    wifiClient.readBytesUntil('\r', status, sizeof(status));
+    if (strcmp(status, "HTTP/1.1 200 OK") != 0) {
+      Serial.print(F("Unexpected response: "));
+      Serial.println(status);
+      return;
+    }
+
+    // Skip HTTP headers
+    char endOfHeaders[] = "\r\n\r\n";
+    if (!wifiClient.find(endOfHeaders)) {
+      Serial.println(F("Invalid response"));
+      return;
+    }
+
+    // Allocate JsonBuffer
+    // Use arduinojson.org/assistant to compute the capacity.
+    const size_t capacity = JSON_OBJECT_SIZE(3) + JSON_ARRAY_SIZE(2) + 60;
+    DynamicJsonBuffer jsonBuffer(capacity);
+
+    // Parse JSON object
+    JsonObject& root = jsonBuffer.parseObject(wifiClient);
+    if (!root.success()) {
+      Serial.println(F("Parsing failed!"));
+      return;
+    }
     Serial.write(c);
   }
 }
