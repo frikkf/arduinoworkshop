@@ -27,7 +27,8 @@ long postingInterval = 30000;
 
 // Declare global variable for timing
 long lastConnectionTime;
-
+long lastLightSensorLogTime;
+long lastTempSensorLogTime;
 // Declare and initialise data variable
 long myData = 0;
 
@@ -46,6 +47,8 @@ String myStr;
 const int redPin = 5;
 const int greenPin = 6;
 const int bluePin = 7;
+const int lightPin = A0;
+const int tempPin = A1;
 int redVal = 250, greenVal = 100, blueVal = 50;
 // Instantiate a LinkedList that will hold 'integer'
 LinkedList<String> responseArray = LinkedList<String>();
@@ -68,6 +71,39 @@ void loop() {
   //logESPOutput();
   //postToServerInterval();
   listenToWifiClients();
+
+  logLightSensorData();
+  logTempSensorData();
+}
+
+void logLightSensorData() {
+  if (millis() - lastLightSensorLogTime > 30000) {
+    int sensorData = getLightSensorData();
+    Serial.print("Raw light sensor value: ");
+    Serial.print(sensorData);
+    Serial.print("\n");
+    lastLightSensorLogTime = millis();
+  }
+}
+
+int getLightSensorData() {
+  return analogRead(lightPin);
+}
+
+void logTempSensorData() {
+  if (millis() - lastTempSensorLogTime > 30000) {
+    int sensorData = analogRead(tempPin);
+    Serial.print("Raw temp sensor value: ");
+    Serial.print(sensorData);
+    Serial.print("\t voltage: ");
+    float voltage = (sensorData/1024.0) * 5.0;
+    Serial.print(voltage);
+    Serial.print("\t degrees C: ");
+    float temperature = (voltage - .5) * 100;
+    Serial.print(temperature);
+    Serial.print("\n");
+    lastTempSensorLogTime = millis();
+  }
 }
 
 void setLedColor() {
