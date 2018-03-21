@@ -82,6 +82,7 @@ void logLightSensorData() {
     Serial.print("Raw light sensor value: ");
     Serial.print(sensorData);
     Serial.print("\n");
+    //sendThingspeak(String(sensorData), "field2");
     lastLightSensorLogTime = millis();
   }
 }
@@ -102,6 +103,7 @@ void logTempSensorData() {
     float temperature = (voltage - .5) * 100;
     Serial.print(temperature);
     Serial.print("\n");
+    sendThingspeak(String(temperature));
     lastTempSensorLogTime = millis();
   }
 }
@@ -158,31 +160,6 @@ void parseQueryParams(String str) {//sets the parseArray to the queryParams
   parseArray.add(key);
   parseArray.add(value);
 }
-/*
-void parseRequest(String str) {
-  Serial.println(str);
-  int startIndex = str.indexOf("r");
-  int endIndex = str.indexOf("g");
-  String redStr = str.substring(startIndex + 2, endIndex - 1);
-  Serial.println(redStr);
-  char tempRed[4];
-  redStr.toCharArray(tempRed, sizeof(tempRed));
-  redVal = atoi(tempRed);
-  startIndex = str.indexOf("g");
-  endIndex = str.indexOf("b");
-  String greenStr = str.substring(startIndex + 2, endIndex -1);
-  char tempGreen[4];
-  greenStr.toCharArray(tempGreen, sizeof(tempGreen));
-  greenVal = atoi(tempGreen);
-  startIndex = str.indexOf("b");
-  endIndex = str.indexOf("e");
-  String blueStr = str.substring(startIndex + 2, endIndex -1);
-  char tempBlue[4];
-  blueStr.toCharArray(tempBlue, sizeof(tempBlue));
-  blueVal = atoi(tempBlue);
-  Serial.println(redStr + " " + greenStr + " " + blueStr);
-  setLedColor();
-}*/
 
 String getUrlQueryParamsAsString(WiFiEspClient client) {
   boolean currentLineIsBlank = true;
@@ -349,8 +326,9 @@ void sendThingspeak(String value){
   }  
 }
 
-void uploadToThingSpeak(long value) {
-  String relativeUrl = "/update?api_key=" + String(thingspeakAPIKey) + "&field1=" + String(value);
+
+void uploadToThingSpeak(String value, String fieldName) {
+  String relativeUrl = "/update?api_key=" + String(thingspeakAPIKey) + "&"+fieldName+"=" + value;
   GET("api.thingspeak.com", relativeUrl);
 }
 
