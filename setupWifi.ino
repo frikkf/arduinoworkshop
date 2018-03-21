@@ -54,6 +54,8 @@ void loop() {
   listenToWifiClients();
 }
 
+
+
 void listenToWifiClients() {
   // listen for incoming clients. Give them simple response
   WiFiEspClient client = server.available();
@@ -71,26 +73,7 @@ void listenToWifiClients() {
         // so you can send a reply
         if( c == '\n' && currentLineIsBlank ) {
           Serial.println("Sending response");
-
-          //send a standard response http header
-          // use \r\n instaed of many println statemenets to speedup data send
-          client.print(
-            "Http/1.1 200 OK\r\n"
-            "Content-Type: text/html\r\n"
-            "Connection: close\r\n"
-            "Refresh: 20\r\n"
-            "\r\n"
-          );
-          client.print("<!DOCTYPE HTML>\r\n");
-          client.print("<html>\r\n");
-          client.print("<h1>Hello World!</h1>\r\n");
-          client.print("Requests received: ");
-          client.print(++reqCount);
-          client.print("<br>\r\n");
-          client.print("Analog input A0: ");
-          client.print(analogRead(0));
-          client.print("<br>\r\n");
-          client.print("</html>\r\n");
+          sendHttpResponse(client);
           break;
         }
         if( c == '\n') {
@@ -110,6 +93,29 @@ void listenToWifiClients() {
     client.stop();
     Serial.println("Client disconnected");
   }
+}
+
+void sendHttpResponse(WiFiEspClient client)
+{
+  //send a standard response http header
+  // use \r\n instaed of many println statemenets to speedup data send
+  client.print(
+    "Http/1.1 200 OK\r\n"
+    "Content-Type: text/html\r\n"
+    "Connection: close\r\n"
+    "Refresh: 20\r\n"
+    "\r\n"
+  );
+  client.print("<!DOCTYPE HTML>\r\n");
+  client.print("<html>\r\n");
+  client.print("<h1>Hello World!</h1>\r\n");
+  client.print("Requests received: ");
+  client.print(++reqCount);
+  client.print("<br>\r\n");
+  client.print("Analog input A0: ");
+  client.print(analogRead(0));
+  client.print("<br>\r\n");
+  client.print("</html>\r\n");
 }
 
 void initWifiServer() {
