@@ -1,3 +1,5 @@
+#include <LinkedList.h>
+
 // Include SoftwareSerial and Wifi library
 #include <SoftwareSerial.h>
 #include <WiFiEsp.h>
@@ -39,6 +41,15 @@ WiFiEspClient wifiClient;
 WiFiEspServer wifiServer(80);
 char server[] = "api.thingspeak.com";
 
+boolean reading = false;
+String myStr;
+const int redPin = 5;
+const int greenPin = 6;
+const int bluePin = 7;
+int redVal = 250, greenVal = 100, blueVal = 50;
+// Instantiate a LinkedList that will hold 'integer'
+LinkedList<String> responseArray = LinkedList<String>();
+LinkedList<String> parseArray = LinkedList<String>();
 /*
  * booting controll mechanism
  */
@@ -50,48 +61,117 @@ void setup() {
   printWifiStatus();
   initWifiServer();
   Serial.println("Startup completed");
+  setLedColor();
 }
 
 void loop() {
-  logESPOutput();
-  postToServerInterval();
+  //logESPOutput();
+  //postToServerInterval();
   listenToWifiClients();
+}
+
+void setLedColor() {
+  Serial.println("r: "+String(redVal)+ " g:"+String(greenVal)+" b:"+String(blueVal));
+  analogWrite(redPin, redVal);
+  analogWrite(greenPin, greenVal);
+  analogWrite(bluePin, blueVal);
 }
 
 /*
  * Below comes all the implementation
  */
 
+void requestHandler() {
+  checkThingSpeakQuery();
+}
+
+void checkThingSpeakQuery() {
+  for (int i=0; i <= parseArray.size() - 2; i = i + 2){
+      if(parseArray.get(i).indexOf("thingspeak") != -1) {
+        responseArray.add("SentValue");
+        String value = parseArray.get(i+1);
+        responseArray.add(value);
+        sendThingspeak(value);
+      }
+  }
+}
+
+void parseQueryParams(String str) {//sets the parseArray to the queryParams
+  parseArray.clear();
+  String currentStr = str;
+  while( currentStr.indexOf("&") != -1) {
+    int endIndex = currentStr.indexOf("&");
+    String param = currentStr.substring(0, endIndex);
+    String key = param.substring(0, param.indexOf("="));
+    parseArray.add(key);
+    String value = param.substring(param.indexOf("=")+1, param.length());
+    parseArray.add(value);
+    currentStr = currentStr.substring(endIndex+1, currentStr.length());
+  }
+  //last piece
+  String lastParam = currentStr;
+  String key = currentStr.substring(0, currentStr.indexOf("="));
+  String value = currentStr.substring(currentStr.indexOf("=")+1, currentStr.length());
+  parseArray.add(key);
+  parseArray.add(value);
+}
+/*
+void parseRequest(String str) {
+  Serial.println(str);
+  int startIndex = str.indexOf("r");
+  int endIndex = str.indexOf("g");
+  String redStr = str.substring(startIndex + 2, endIndex - 1);
+  Serial.println(redStr);
+  char tempRed[4];
+  redStr.toCharArray(tempRed, sizeof(tempRed));
+  redVal = atoi(tempRed);
+  startIndex = str.indexOf("g");
+  endIndex = str.indexOf("b");
+  String greenStr = str.substring(startIndex + 2, endIndex -1);
+  char tempGreen[4];
+  greenStr.toCharArray(tempGreen, sizeof(tempGreen));
+  greenVal = atoi(tempGreen);
+  startIndex = str.indexOf("b");
+  endIndex = str.indexOf("e");
+  String blueStr = str.substring(startIndex + 2, endIndex -1);
+  char tempBlue[4];
+  blueStr.toCharArray(tempBlue, sizeof(tempBlue));
+  blueVal = atoi(tempBlue);
+  Serial.println(redStr + " " + greenStr + " " + blueStr);
+  setLedColor();
+}*/
+
+String getUrlQueryParamsAsString(WiFiEspClient client) {
+  boolean currentLineIsBlank = true;
+  String str = "";
+  while( client.connected() ) {
+    if( client.available() ) {
+      char c = client.read();
+      if(reading && c == ' ') reading = false; //stop reading
+      if(c == '?') reading = true; //found the ?, begin reading the queryParams
+      if(reading && c != '?') str += c; //append the next character to str
+      if (c == '\n' && currentLineIsBlank)  break;//stop reading 
+      if (c == '\n') {
+        currentLineIsBlank = true;
+      }else if (c != '\r') {
+        currentLineIsBlank = false;
+      }
+    }//end if
+  }
+  return str;
+}
+
 void listenToWifiClients() {
   // listen for incoming clients. Give them simple response
   WiFiEspClient client = wifiServer.available();
   if(client) {
+    Serial.println("\n\n\n");
     Serial.println("New Client connected to server");
-    //an http request ends with a blank line
-    boolean currentLineIsBlank = true;
+    String str = getUrlQueryParamsAsString(client);
+    parseQueryParams(str);
+    requestHandler();
+    sendHttpResponseJSON(client);
 
-    while( client.connected() ) {
-      if( client.available() ) {
-        char c = client.read();
-        Serial.write(c);
-        // if you've gotten to the end of the line (received a newline
-        // character) and the line is blank, the http request has ended,
-        // so you can send a reply
-        if( c == '\n' && currentLineIsBlank ) {
-          Serial.println("Sending response");
-          sendHttpResponseHTML(client);
-          break;
-        }
-        if( c == '\n') {
-          // you are starting a new line
-          currentLineIsBlank = true;
-        }
-        else if( c != '\r') {
-          // you have gotten a character on the current line
-          currentLineIsBlank = false;
-        }
-      }
-    }
     // give the web browser time to receive the data
     delay(10);
 
@@ -132,18 +212,18 @@ void sendHttpResponseJSON(WiFiEspClient client){
   );
   StaticJsonBuffer<200> jsonBuffer;
   JsonObject& object = jsonBuffer.createObject();
-  object["hello"] = "world";
+  for (int i=0; i <= responseArray.size() - 2; i = i + 2){
+      object[responseArray.get(i)] = responseArray.get(i+1);
+  }
   object.prettyPrintTo(client);
-  char json[] = "{\"sensor\":\"gps\",\"time\":1351824120,\"data\":[48.756080,2.302038]}";
-  client.println(json);
-  
+  responseArray.clear();
 }
 
 void initWifiServer() {
   // start the web server on port 80
   wifiServer.begin();
 }
-
+/*
 void logESPOutput() {
   // Get connection info in Serial monitor
   while(wifiClient.available()){
@@ -178,7 +258,7 @@ void logESPOutput() {
     }
     Serial.write(c);
   }
-}
+}*/
 
 void initSerials() {
   // Initialize serial for debugging
@@ -189,6 +269,10 @@ void initSerials() {
   
   // Initialize ESP module
   WiFi.init(&Serial1);
+
+  pinMode(redPin, OUTPUT);
+  pinMode(greenPin, OUTPUT);
+  pinMode(bluePin, OUTPUT);
 }
 
 void connectToWifi() {
@@ -205,16 +289,16 @@ void connectToWifi() {
 void postToServerInterval() {
   if (millis() - lastConnectionTime > postingInterval) {
     myData = myData + random(-10, 10);
-    sendThingspeak(myData);
+    sendThingspeak(String(myData));
     lastConnectionTime = millis();
   }
 }
 
-void sendThingspeak(long value){
+void sendThingspeak(String value){
   if (wifiClient.connectSSL(server, sslPort)) {
     Serial.println("Connected to server");
     wifiClient.println("GET /update?api_key=" + String(thingspeakAPIKey) + 
-    "&field1=" + String(value) + " HTTP/1.1");
+    "&field1=" + value + " HTTP/1.1");
     wifiClient.println("Host: api.thingspeak.com");
     wifiClient.println("Connection: close");
     wifiClient.println();

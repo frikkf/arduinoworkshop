@@ -1,5 +1,17 @@
 {
   "files.associations": {
-    "iosfwd": "cpp"
+    "iosfwd": "cpp",
+    "__locale": "cpp",
+    "ostream": "cpp",
+    "rope": "cpp",
+    "istream": "cpp",
+    "sstream": "cpp",
+    "__functional_base": "cpp",
+    "array": "cpp",
+    "locale": "cpp",
+    "memory": "cpp",
+    "tuple": "cpp",
+    "utility": "cpp",
+    "functional": "cpp"
   }
 }
