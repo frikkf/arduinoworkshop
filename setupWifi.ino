@@ -6,7 +6,11 @@
 #include <WiFiEspServer.h>
 #include <ArduinoJson.h>
 
-// Create WiFi module object on GPIO pin 6 (RX) and 7 (TX)
+/*
+ * global variables
+ */
+
+// Create WiFi module object on GPIO pin 2 (RX) and 3 (TX)
 SoftwareSerial Serial1(2, 3);
 
 // Declare and initialise global arrays for WiFi settings
@@ -14,6 +18,7 @@ SoftwareSerial Serial1(2, 3);
 char pass[] = "FjiA2018";*/
 char ssid[] = "Herman-3G";
 char pass[] = "hermansinvilla";
+
 long sslPort = 443;
 const char thingspeakAPIKey[] = "Z8XM3T4MTC2GUXOJ";
 long postingInterval = 30000;
@@ -29,18 +34,18 @@ int status = WL_IDLE_STATUS;
 
 // Initialize the Wifi client object
 WiFiEspClient wifiClient;
+
 // Initialize the Wifi server object
 WiFiEspServer wifiServer(80);
-
 char server[] = "api.thingspeak.com";
 
-//booting up
-void setup() {
-  
-  initSerials();
-  
-  connectToWifi();
+/*
+ * booting controll mechanism
+ */
 
+void setup() {
+  initSerials();
+  connectToWifi();
   Serial.println("You're connected to the network");
   printWifiStatus();
   initWifiServer();
@@ -48,13 +53,14 @@ void setup() {
 }
 
 void loop() {
-  
   logESPOutput();
   postToServerInterval();
   listenToWifiClients();
 }
 
-
+/*
+ * Below comes all the implementation
+ */
 
 void listenToWifiClients() {
   // listen for incoming clients. Give them simple response
@@ -97,6 +103,7 @@ void listenToWifiClients() {
 
 void sendHttpResponse(WiFiEspClient client)
 {
+  //todo how to configure this to respond with json?
   //send a standard response http header
   // use \r\n instaed of many println statemenets to speedup data send
   client.print(
@@ -108,14 +115,30 @@ void sendHttpResponse(WiFiEspClient client)
   );
   client.print("<!DOCTYPE HTML>\r\n");
   client.print("<html>\r\n");
-  client.print("<h1>Hello World!</h1>\r\n");
-  client.print("Requests received: ");
-  client.print(++reqCount);
-  client.print("<br>\r\n");
-  client.print("Analog input A0: ");
-  client.print(analogRead(0));
+  client.print("<h1>Hello Arduino Friends!</h1>\r\n");
   client.print("<br>\r\n");
   client.print("</html>\r\n");
+}
+
+void sendHttpResponseJSON(WiFiEspClient client)
+{
+  //todo how to configure this to respond with json?
+  //send a standard response http header
+  // use \r\n instaed of many println statemenets to speedup data send
+  client.print(
+    "Http/1.1 200 OK\r\n"
+    "Content-Type: application/json\r\n"
+    "Connection: close\r\n"
+    "Refresh: 20\r\n"
+    "\r\n"
+  );
+  StaticJsonBuffer<200> jsonBuffer;
+  JsonObject& object = jsonBuffer.createObject();
+  object["hello"] = "world";
+  object.prettyPrintTo(client);
+  char json[] = "{\"sensor\":\"gps\",\"time\":1351824120,\"data\":[48.756080,2.302038]}";
+  client.println(json);
+  
 }
 
 void initWifiServer() {
