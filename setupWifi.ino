@@ -64,7 +64,7 @@ void loop() {
 
 void listenToWifiClients() {
   // listen for incoming clients. Give them simple response
-  WiFiEspClient client = server.available();
+  WiFiEspClient client = wifiServer.available();
   if(client) {
     Serial.println("New Client connected to server");
     //an http request ends with a blank line
@@ -101,8 +101,7 @@ void listenToWifiClients() {
   }
 }
 
-void sendHttpResponse(WiFiEspClient client)
-{
+void sendHttpResponse(WiFiEspClient client) {
   //todo how to configure this to respond with json?
   //send a standard response http header
   // use \r\n instaed of many println statemenets to speedup data send
@@ -120,8 +119,7 @@ void sendHttpResponse(WiFiEspClient client)
   client.print("</html>\r\n");
 }
 
-void sendHttpResponseJSON(WiFiEspClient client)
-{
+void sendHttpResponseJSON(WiFiEspClient client){
   //todo how to configure this to respond with json?
   //send a standard response http header
   // use \r\n instaed of many println statemenets to speedup data send
@@ -147,7 +145,7 @@ void initWifiServer() {
 }
 
 void logESPOutput() {
-// Get connection info in Serial monitor
+  // Get connection info in Serial monitor
   while(wifiClient.available()){
     char c = wifiClient.read();
     Serial.write(c);
@@ -197,7 +195,8 @@ void sendThingspeak(long value){
 }
 
 void uploadToThingSpeak(long value) {
-  GET("api.thingspeak.com", "/update?api_key=" + String(thingspeakAPIKey) + "&field1=" + String(value), null)
+  String relativeUrl = "/update?api_key=" + String(thingspeakAPIKey) + "&field1=" + String(value);
+  GET("api.thingspeak.com", relativeUrl);
 }
 
 void printWifiStatus() {
@@ -218,12 +217,12 @@ void printWifiStatus() {
   Serial.println(" dBm");
 }
 
-void GET(char domain[], char relativeUrl[], headers ) {
+void GET(char domain[], String relativeUrl) {
   if (wifiClient.connectSSL(domain, 443)) {
     Serial.println("Connected to endpoint");
-    string connect = "GET " + String(relativeUrl) + " HTTP/1.1";
-    wifiClient.println(connect)
-    wifiClient.println("Host: "+ String(domain))
+    String connect = "GET " + relativeUrl + " HTTP/1.1";
+    wifiClient.println(connect);
+    wifiClient.println("Host: "+ String(domain));
     wifiClient.println("Connection: close");
     Serial.println("Sent to server");
   }
